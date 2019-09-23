@@ -23,8 +23,10 @@ class action_plugin_telleveryone_notification extends DokuWiki_Action_Plugin
      */
     public function register(Doku_Event_Handler $controller)
     {
-        $controller->register_hook('PLUGIN_NOTIFICATION_REGISTER_SOURCE', 'FIXME', $this, 'handle_plugin_notification_register_source');        $controller->register_hook('PLUGIN_NOTIFICATION_GATHER', 'FIXME', $this, 'handle_plugin_notification_gather');        $controller->register_hook('PLUGIN_NOTIFICATION_CACHE_DEPENDENCIES', 'FIXME', $this, 'handle_plugin_notification_cache_dependencies');
-   
+        $controller->register_hook('PLUGIN_NOTIFICATION_REGISTER_SOURCE', 'AFTER', $this, 'handle_plugin_notification_register_source');
+        $controller->register_hook('PLUGIN_NOTIFICATION_CACHE_DEPENDENCIES', 'AFTER', $this, 'handle_plugin_notification_cache_dependencies');
+        $controller->register_hook('PLUGIN_NOTIFICATION_GATHER', 'AFTER', $this, 'handle_plugin_notification_gather');
+
     }
 
     /**
@@ -40,12 +42,74 @@ class action_plugin_telleveryone_notification extends DokuWiki_Action_Plugin
      */
     public function handle_plugin_notification_register_source(Doku_Event $event, $param)
     {
+        $event->data[] = 'telleveryone';
     }
-    public function handle_plugin_notification_gather(Doku_Event $event, $param)
-    {
-    }
+
     public function handle_plugin_notification_cache_dependencies(Doku_Event $event, $param)
     {
+        if (!in_array('telleveryone', $event->data['plugins'])) return;
+
+        //when we use REMOTE API - we cannot use cache
+        if ($this->getConf('remote')) {
+            $event->data['_nocache'] = true;
+            return;
+        }
+
+        /** @var \helper_plugin_ireadit_db $db_helper */
+        $db_helper = plugin_load('helper', 'telleveryone_db');
+        $event->data['dependencies'][] = $db_helper->getDB()->getAdapter()->getDbFile();
+    }
+
+    public function handle_plugin_notification_gather(Doku_Event $event, $param)
+    {
+        if (!in_array('telleveryone', $event->data['plugins'])) return;
+
+        /** @var \helper_plugin_ireadit_db $db_helper */
+        $db_helper = plugin_load('helper', 'telleveryone_db');
+        $sqlite = $db_helper->getDB();
+
+        $q = 'SELECT timestamp, message_html FROM log LIMIT ?';
+        $res = $sqlite->query($q, $this->getConf('limit'));
+
+        $logs = $sqlite->res2arr($res);
+
+        //load remote logs
+        $remote_logs_sources = array_filter(explode("\n", $this->getConf('remote')));
+        foreach ($remote_logs_sources as $source) {
+            list($url, $token) = preg_split('/\s+/', trim($source), 2);
+            if (empty($url)) continue;
+            if (empty($token)) {
+                msg('No token provided for "telleveryone" API: ' . $url, -1);
+                continue;
+            }
+            $full_url = rtrim($url, '/');
+
+            $query = http_build_query(['token' => $token, 'limit' => $this->getConf('limit')]);
+            $full_url .= '/lib/plugins/telleveryone/api.php?' . $query;
+            $result = file_get_contents($full_url);
+            if (!$result) {
+                msg('Cannot access "telleveryone" API for ' . $url, -1);
+                continue;
+            }
+            $remote_logs = json_decode($result, true);
+            $logs = array_merge($logs, $remote_logs);
+        }
+
+        //sort by timestamp and remove to fit $conf['limit']
+        array_multisort(array_column($logs, 'timestamp'), SORT_DESC, $logs);
+        $logs = array_slice($logs, 0, $this->getConf('limit'));
+
+        foreach ($logs as $log) {
+            $timestamp = strtotime($log['timestamp']);
+            $message = $log['message_html'];
+
+            $event->data['notifications'][] = [
+                'plugin' => 'telleveryone',
+                'full' => $message,
+                'brief' => $message,
+                'timestamp' => $timestamp
+            ];
+        }
     }
 
 }

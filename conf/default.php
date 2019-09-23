@@ -5,5 +5,5 @@
  * @author Szymon Olewniczak <it@rid.pl>
  */
 
-//$conf['fixme']    = 'FIXME';
-
+$conf['limit']    = '10';
+$conf['remote']    = '';

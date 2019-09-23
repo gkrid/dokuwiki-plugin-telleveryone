@@ -6,5 +6,5 @@
  */
 
 
-//$meta['fixme'] = array('string');
-
+$meta['limit'] = array('numeric');
+$meta['remote'] = array('');
