@@ -55,20 +55,31 @@ class action_plugin_telleveryone_notification extends DokuWiki_Action_Plugin
             return;
         }
 
-        /** @var \helper_plugin_ireadit_db $db_helper */
-        $db_helper = plugin_load('helper', 'telleveryone_db');
-        $event->data['dependencies'][] = $db_helper->getDB()->getAdapter()->getDbFile();
+        try {
+            /** @var \helper_plugin_telleveryone_db $db_helper */
+            $db_helper = plugin_load('helper', 'telleveryone_db');
+            $sqlite = $db_helper->getDB();
+            $event->data['dependencies'][] = $sqlite->getAdapter()->getDbFile();
+        } catch (Exception $e) {
+            msg($e->getMessage(), -1);
+            return;
+        }
     }
 
     public function handle_plugin_notification_gather(Doku_Event $event, $param)
     {
         if (!in_array('telleveryone', $event->data['plugins'])) return;
 
-        /** @var \helper_plugin_ireadit_db $db_helper */
-        $db_helper = plugin_load('helper', 'telleveryone_db');
-        $sqlite = $db_helper->getDB();
+        try {
+            /** @var \helper_plugin_telleveryone_db $db_helper */
+            $db_helper = plugin_load('helper', 'telleveryone_db');
+            $sqlite = $db_helper->getDB();
+        } catch (Exception $e) {
+            msg($e->getMessage(), -1);
+            return;
+        }
 
-        $q = 'SELECT timestamp, message_html FROM log LIMIT ?';
+        $q = 'SELECT id, timestamp, message_html FROM log LIMIT ?';
         $res = $sqlite->query($q, $this->getConf('limit'));
 
         $logs = $sqlite->res2arr($res);
@@ -100,11 +111,13 @@ class action_plugin_telleveryone_notification extends DokuWiki_Action_Plugin
         $logs = array_slice($logs, 0, $this->getConf('limit'));
 
         foreach ($logs as $log) {
+            $id = $log['id'];
             $timestamp = strtotime($log['timestamp']);
             $message = $log['message_html'];
 
             $event->data['notifications'][] = [
                 'plugin' => 'telleveryone',
+                'id' => $id,
                 'full' => $message,
                 'brief' => $message,
                 'timestamp' => $timestamp

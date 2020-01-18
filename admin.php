@@ -43,9 +43,14 @@ class admin_plugin_telleveryone extends DokuWiki_Admin_Plugin
 
         $log = $INPUT->arr('log');
 
-        /** @var helper_plugin_telleveryone_db $db_helper */
-        $db_helper = plugin_load('helper', 'telleveryone_db');
-        $sqlite = $db_helper->getDB();
+        try {
+            /** @var \helper_plugin_telleveryone_db $db_helper */
+            $db_helper = plugin_load('helper', 'telleveryone_db');
+            $sqlite = $db_helper->getDB();
+        } catch (Exception $e) {
+            msg($e->getMessage(), -1);
+            return;
+        }
 
         switch ($INPUT->str('action')) {
             case 'add':
@@ -84,9 +89,14 @@ class admin_plugin_telleveryone extends DokuWiki_Admin_Plugin
 
         ptln('<h1>' . $this->getLang('menu') . '</h1>');
 
-        /** @var helper_plugin_telleveryone_db $db_helper */
-        $db_helper = plugin_load('helper', 'telleveryone_db');
-        $sqlite = $db_helper->getDB();
+        try {
+            /** @var \helper_plugin_telleveryone_db $db_helper */
+            $db_helper = plugin_load('helper', 'telleveryone_db');
+            $sqlite = $db_helper->getDB();
+        } catch (Exception $e) {
+            msg($e->getMessage(), -1);
+            return;
+        }
 
         $res = $sqlite->query("SELECT value FROM config WHERE key='token'");
         $token = $sqlite->res2single($res);
