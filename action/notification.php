@@ -103,6 +103,10 @@ class action_plugin_telleveryone_notification extends DokuWiki_Action_Plugin
                 continue;
             }
             $remote_logs = json_decode($result, true);
+            $remote_logs = array_map(function ($log) use ($url) {
+                $log['id'] = $url . ':' . $log['id'];
+                return $log;
+            }, $remote_logs);
             $logs = array_merge($logs, $remote_logs);
         }
 
