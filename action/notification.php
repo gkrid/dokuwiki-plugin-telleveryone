@@ -79,7 +79,7 @@ class action_plugin_telleveryone_notification extends DokuWiki_Action_Plugin
             return;
         }
 
-        $q = 'SELECT id, timestamp, message_html FROM log LIMIT ?';
+        $q = 'SELECT id, timestamp, message_html FROM log ORDER BY timestamp DESC LIMIT ?';
         $res = $sqlite->query($q, $this->getConf('limit'));
 
         $logs = $sqlite->res2arr($res);
