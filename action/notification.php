@@ -111,7 +111,8 @@ class action_plugin_telleveryone_notification extends DokuWiki_Action_Plugin
         }
 
         //sort by timestamp and remove to fit $conf['limit']
-        array_multisort(array_column($logs, 'timestamp'), SORT_DESC, $logs);
+        $timestamps = array_map('strtotime', array_column($logs, 'timestamp'));
+        array_multisort($timestamps, SORT_DESC, $logs);
         $logs = array_slice($logs, 0, $this->getConf('limit'));
 
         foreach ($logs as $log) {
